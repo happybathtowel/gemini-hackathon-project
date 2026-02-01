@@ -34,3 +34,9 @@ export async function analyzeCompany(ticker) {
     if (!response.ok) throw new Error("Failed to analyze company");
     return response.json();
 }
+
+export async function getTrackedTickers() {
+    const response = await fetch(`${API_BASE}/api/tracked`);
+    if (!response.ok) throw new Error("Failed to get tracked tickers");
+    return response.json();
+}

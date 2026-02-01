@@ -140,8 +140,30 @@ def analyze_company(request: CompanyAnalysisRequest):
     
     return {"report": report}
 
+@app.get("/api/tracked")
+def get_tracked_tickers_endpoint():
+    """
+    Get list of all currently tracked tickers.
+    """
+    from monitor import get_tracked_tickers
+    return {"tickers": get_tracked_tickers()}
+
 @app.get("/api/feed")
 def get_feed():
     # Placeholder for checking if there are new notifications
     # In a real app, use SSE or Websockets
-    return {"updates": []}
+    from monitor import get_recent_filings, get_tracked_tickers
+    
+    # Simple feed implementation: Get most recent filing for each ticker
+    # This is inefficient for production but fine for hackathon
+    feed_items = []
+    for ticker in get_tracked_tickers():
+         filings = get_recent_filings(ticker)
+         if filings:
+             for f in filings[:3]: # Top 3 per company
+                 f['ticker'] = ticker # Add ticker context
+                 feed_items.append(f)
+    
+    # Sort by date desc
+    feed_items.sort(key=lambda x: x['filingDate'], reverse=True)
+    return {"updates": feed_items[:20]}

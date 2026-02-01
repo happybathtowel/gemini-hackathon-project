@@ -52,3 +52,6 @@ def add_ticker_to_monitor(ticker: str):
             logger.info(f"Started tracking {ticker}. Latest: {filings[0]['accessionNumber']}")
     except Exception as e:
         logger.error(f"Failed to init tracking for {ticker}: {e}")
+
+def get_tracked_tickers():
+    return list(tracked_tickers)
