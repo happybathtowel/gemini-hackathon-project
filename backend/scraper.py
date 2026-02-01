@@ -36,7 +36,7 @@ def get_cik(ticker: str) -> str:
         logger.error(f"Error fetching CIK for {ticker}: {e}")
         return None
 
-def get_recent_filings(ticker: str, filing_type: str = ""):
+def get_recent_filings(ticker: str, filing_type: str = "", limit: int = 10):
     """
     Fetch recent filings for a ticker.
     filing_type can be "10-K", "8-K", etc.
@@ -87,8 +87,7 @@ def get_recent_filings(ticker: str, filing_type: str = ""):
                 "url": doc_url
             })
             
-            # Limit to recent 10 for now to avoid overload
-            if len(results) >= 10:
+            if len(results) >= limit:
                 break
                 
         return results
@@ -97,10 +96,32 @@ def get_recent_filings(ticker: str, filing_type: str = ""):
         logger.error(f"Error fetching filings for {ticker}: {e}")
         return []
 
+import hashlib
+import os
+
+CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
+if not os.path.exists(CACHE_DIR):
+    os.makedirs(CACHE_DIR)
+
 def get_filing_text(url: str) -> str:
     """
     Fetch and parse the text content of a filing URL.
+    Caches the result locally to avoid repeated requests.
     """
+    # Generate a safe filename from the URL
+    url_hash = hashlib.md5(url.encode('utf-8')).hexdigest()
+    cache_path = os.path.join(CACHE_DIR, f"{url_hash}.txt")
+
+    # Check cache first
+    if os.path.exists(cache_path):
+        logger.info(f"Cache hit for {url}")
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception as e:
+            logger.error(f"Error reading cache for {url}: {e}")
+            # Fallthrough to fetch if cache read fails
+
     try:
         response = requests.get(url, headers=HEADERS)
         response.raise_for_status()
@@ -112,7 +133,16 @@ def get_filing_text(url: str) -> str:
             script.decompose()
             
         text = soup.get_text(separator="\n", strip=True)
-        return text[:100000] # Limit to 100k chars for API limits (rough safety)
+        text = text[:100000] # Limit to 100k chars
+        
+        # Save to cache
+        try:
+            with open(cache_path, "w", encoding="utf-8") as f:
+                f.write(text)
+        except Exception as e:
+            logger.error(f"Error writing to cache for {url}: {e}")
+            
+        return text
         
     except Exception as e:
         logger.error(f"Error fetching text from {url}: {e}")

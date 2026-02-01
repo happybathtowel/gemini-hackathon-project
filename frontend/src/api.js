@@ -24,3 +24,13 @@ export async function getFeed() {
     if (!response.ok) throw new Error("Failed to get feed");
     return response.json();
 }
+
+export async function analyzeCompany(ticker) {
+    const response = await fetch(`${API_BASE}/api/analyze-company`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker }),
+    });
+    if (!response.ok) throw new Error("Failed to analyze company");
+    return response.json();
+}
