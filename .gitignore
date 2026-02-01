@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Node.js
+frontend/node_modules/
+frontend/dist/
+frontend/.svelte-kit/
+
+# OS
+.DS_Store
+Thumbs.db
