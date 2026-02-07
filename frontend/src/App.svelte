@@ -110,24 +110,45 @@
   function closeAnalysis() {
     activeAnalysis = null;
   }
+
+  // Reactive Stats
+  $: totalFilings = Object.values(filingsMap).reduce(
+    (acc, filings) => acc + filings.length,
+    0,
+  );
+  // Mock analysis runs for now, or derive from some state if available.
+  // For hackathon, we can just say it's proportional to filings or start at 0.
+  $: analysisRuns = Math.floor(totalFilings * 0.8) + (activeAnalysis ? 1 : 0);
+
+  // Time Range for Chart
+  let timeRange = "90d";
+
+  // Derive Chart Data (Filings over time)
+  $: chartData = (() => {
+    const allFilings = Object.values(filingsMap).flat();
+    const countsByDate = {};
+
+    allFilings.forEach((f) => {
+      // Normalize date to YYYY-MM-DD
+      const date = f.filingDate.split(" ")[0]; // Assuming "YYYY-MM-DD" or similar
+      countsByDate[date] = (countsByDate[date] || 0) + 1;
+    });
+
+    // Sort by date
+    const sortedDates = Object.keys(countsByDate).sort();
+
+    // Fill in gaps? For now, just map existing dates.
+    // Ideally we'd fill gaps with 0 for a smooth line, but let's start simple.
+    return sortedDates.map((date) => ({
+      date,
+      count: countsByDate[date],
+    }));
+  })();
 </script>
 
-<div
-  class="min-h-screen flex flex-col font-sans"
-  style="background-color: #0f172a; padding: 2rem;"
->
+<div class="min-h-screen flex flex-col font-sans bg-slate-950 p-8">
   <div
-    class="dashboard-container flex flex-col"
-    style="
-      width: 100%; 
-      max-width: 1400px; 
-      margin: 0 auto; 
-      border: 1px solid rgba(255, 255, 255, 0.1); 
-      border-radius: 12px; 
-      background-color: #020617; 
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
-      overflow: hidden;
-    "
+    class="w-full max-w-[1400px] mx-auto border border-white/10 rounded-xl bg-slate-950 shadow-2xl overflow-hidden flex flex-col"
   >
     <Navbar onTrack={handleTrack} />
 
@@ -157,13 +178,17 @@
         </Tabs.List>
 
         <Tabs.Content value="overview" class="space-y-4">
-          <InteractiveAreaChart />
-          <DashboardStats trackedCount={trackedTickers.size} />
+          <InteractiveAreaChart data={chartData} {timeRange} />
+          <DashboardStats
+            trackedCount={trackedTickers.size}
+            {totalFilings}
+            {analysisRuns}
+            activeMonitors={trackedTickers.size}
+          />
 
-          <div class="main-dashboard-grid gap-4 items-start">
+          <div class="grid grid-cols-1 lg:grid-cols-7 gap-6 items-start">
             <div
-              class="overview-section"
-              style="background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);"
+              class="lg:col-span-4 bg-slate-800/50 border border-white/10 rounded-xl p-6 shadow-sm"
             >
               <CompanyGrid
                 {trackedTickers}
@@ -174,8 +199,7 @@
             </div>
 
             <div
-              class="recent-section"
-              style="background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);"
+              class="lg:col-span-3 bg-slate-800/50 border border-white/10 rounded-xl p-6 shadow-sm"
             >
               <RecentActivity {feedItems} />
             </div>
@@ -194,24 +218,3 @@
     onClose={closeAnalysis}
   />
 {/if}
-
-<style>
-  /* Manual Grid Fix for Broken Tailwind */
-  .main-dashboard-grid {
-    display: flex;
-    flex-direction: column;
-  }
-
-  @media (min-width: 1024px) {
-    .main-dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-    }
-    .overview-section {
-      grid-column: span 4 / span 4;
-    }
-    .recent-section {
-      grid-column: span 3 / span 3;
-    }
-  }
-</style>

@@ -5,7 +5,7 @@
     export let feedItems = [];
 </script>
 
-<Card.Root class="col-span-3">
+<Card.Root class="h-full bg-transparent border-0 shadow-none p-0">
     <Card.Header>
         <Card.Title>Recent Activity</Card.Title>
         <Card.Description>

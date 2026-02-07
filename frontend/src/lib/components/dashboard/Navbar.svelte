@@ -181,7 +181,7 @@
             >
         </nav>
 
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4 ml-auto">
             <div class="relative w-full max-w-sm hidden sm:block">
                 <Search
                     class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
@@ -226,46 +226,3 @@
         </div>
     </div>
 </header>
-
-<style>
-    /* Manual Flex Fix for Broken Tailwind */
-    .container {
-        display: flex;
-        height: 3.5rem; /* h-14 */
-        align-items: center;
-        padding-left: 2rem;
-        padding-right: 2rem;
-        width: 100%;
-        max-width: 80rem; /* max-w-7xl */
-        margin-left: auto;
-        margin-right: auto;
-    }
-
-    /* Left group (Team + Nav) */
-    .container > div:first-child {
-        display: none;
-    }
-    .container > nav {
-        display: none;
-    }
-
-    /* Right group (Search + User) */
-    .container > div:last-child {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        margin-left: auto;
-    }
-
-    @media (min-width: 768px) {
-        .container > div:first-child {
-            display: flex;
-            margin-right: 1.5rem;
-        }
-        .container > nav {
-            display: flex;
-            align-items: center;
-            column-gap: 1.5rem; /* gap-6 */
-        }
-    }
-</style>

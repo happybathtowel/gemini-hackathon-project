@@ -13,7 +13,7 @@
     });
 </script>
 
-<Card.Root class="col-span-4">
+<Card.Root class="h-full bg-transparent border-0 shadow-none p-0">
     <Card.Header>
         <Card.Title>Overview</Card.Title>
     </Card.Header>
