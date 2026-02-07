@@ -3,7 +3,7 @@ import { defineConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 // https://vite.dev/config/
-// Config updated to force restart (attempt 7)
+// Config updated to force restart (attempt 8)
 export default defineConfig({
   plugins: [svelte()],
   resolve: {

@@ -9,6 +9,7 @@
   import CompanyGrid from "$lib/components/dashboard/CompanyGrid.svelte";
   import RecentActivity from "$lib/components/dashboard/RecentActivity.svelte";
   import AnalysisModal from "$lib/components/dashboard/AnalysisModal.svelte";
+  import InteractiveAreaChart from "$lib/components/dashboard/InteractiveAreaChart.svelte";
 
   import {
     trackTicker,
@@ -156,6 +157,7 @@
         </Tabs.List>
 
         <Tabs.Content value="overview" class="space-y-4">
+          <InteractiveAreaChart />
           <DashboardStats trackedCount={trackedTickers.size} />
 
           <div class="main-dashboard-grid gap-4 items-start">
