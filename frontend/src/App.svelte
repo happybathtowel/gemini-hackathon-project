@@ -10,6 +10,7 @@
   import RecentActivity from "$lib/components/dashboard/RecentActivity.svelte";
   import AnalysisModal from "$lib/components/dashboard/AnalysisModal.svelte";
   import InteractiveAreaChart from "$lib/components/dashboard/InteractiveAreaChart.svelte";
+  import ReportsList from "$lib/components/dashboard/ReportsList.svelte";
 
   import {
     trackTicker,
@@ -144,6 +145,15 @@
       count: countsByDate[date],
     }));
   })();
+
+  $: allFilings = Object.values(filingsMap)
+    .flat()
+    .sort((a, b) => {
+      // Simple string comparison for date if format is YYYY-MM-DD, otherwise construct Date objects
+      return (
+        new Date(b.filingDate).getTime() - new Date(a.filingDate).getTime()
+      );
+    });
 </script>
 
 <div class="min-h-screen flex flex-col font-sans bg-slate-950 p-8">
@@ -209,6 +219,18 @@
             >
               <RecentActivity {feedItems} />
             </div>
+          </div>
+        </Tabs.Content>
+
+        <Tabs.Content value="reports" class="space-y-4">
+          <div class="border border-white/10 rounded-xl p-6 bg-slate-800/50">
+            <div class="mb-4">
+              <h3 class="text-lg font-medium text-white">All Filings</h3>
+              <p class="text-sm text-muted-foreground">
+                View and analyze all tracked filings.
+              </p>
+            </div>
+            <ReportsList {allFilings} onAnalyze={handleAnalyze} />
           </div>
         </Tabs.Content>
       </Tabs.Root>
