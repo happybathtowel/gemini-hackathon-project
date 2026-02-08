@@ -165,7 +165,7 @@
             </DropdownMenu.Root>
         </div>
 
-        <nav
+        <!-- <nav
             class="flex items-center gap-6 text-sm font-medium text-muted-foreground hidden md:flex mx-6"
         >
             <a
@@ -179,7 +179,7 @@
             <a href="#" class="transition-colors hover:text-foreground"
                 >Reports</a
             >
-        </nav>
+        </nav> -->
 
         <div class="flex items-center gap-4 ml-auto">
             <div class="relative w-full max-w-sm hidden sm:block">

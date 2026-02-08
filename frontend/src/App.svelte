@@ -169,10 +169,16 @@
 
       <Tabs.Root value="overview" class="space-y-4">
         <Tabs.List>
-          <Tabs.Trigger value="overview">Overview</Tabs.Trigger>
-          <Tabs.Trigger value="analytics" disabled>Analytics</Tabs.Trigger>
-          <Tabs.Trigger value="reports" disabled>Reports</Tabs.Trigger>
-          <Tabs.Trigger value="notifications" disabled
+          <Tabs.Trigger value="overview" class="cursor-pointer"
+            >Overview</Tabs.Trigger
+          >
+          <Tabs.Trigger value="analytics" class="cursor-pointer"
+            >Analytics</Tabs.Trigger
+          >
+          <Tabs.Trigger value="reports" class="cursor-pointer"
+            >Reports</Tabs.Trigger
+          >
+          <Tabs.Trigger value="notifications" class="cursor-pointer"
             >Notifications</Tabs.Trigger
           >
         </Tabs.List>
