@@ -3,8 +3,10 @@
     import * as Card from "$lib/components/ui/card";
     import { Button } from "$lib/components/ui/button";
 
-    export let data = [];
+    export let series = []; // [{ name: "AAPL", data: [{date, value}], color: "#..." }]
     export let timeRange = "90d";
+    export let label = "Filings";
+    export let formatValue = (v) => v;
 
     // Chart Dimensions
     let width = 0;
@@ -16,41 +18,81 @@
     let tooltipX = 0;
     let tooltipY = 0;
 
-    // Scaling helpers
-    $: maxVal = Math.max(...data.map((d) => d.count), 5) * 1.1; // Ensure at least some height
-    $: xStep = width / (data.length - 1 || 1);
+    // Chart Margins
+    const marginTop = 10;
+    const marginRight = 10;
+    const marginBottom = 20;
+    const marginLeft = 40;
 
-    $: points = data.map((d, i) => {
-        const x = i * xStep;
-        const y = height - (d.count / maxVal) * height;
-        return { x, y, val: d.count };
+    // Derived Dimensions
+    $: innerWidth = Math.max(width - marginLeft - marginRight, 0);
+    $: innerHeight = Math.max(height - marginTop - marginBottom, 0);
+
+    // Scaling helpers
+    // Reset maxVal calculation to check all series
+    $: maxVal =
+        Math.max(...series.flatMap((s) => s.data.map((d) => d.value)), 5) * 1.1;
+
+    // Assume all series have same length/dates for now
+    $: xStep = innerWidth / ((series[0]?.data.length || 1) - 1 || 1);
+
+    // Prepare points for each series
+    $: seriesPoints = series.map((s) => {
+        return {
+            name: s.name,
+            color: s.color,
+            points: s.data.map((d, i) => ({
+                x: i * xStep,
+                y: innerHeight - (d.value / maxVal) * innerHeight,
+                val: d.value,
+                date: d.date,
+            })),
+        };
     });
 
-    // Path Generation
-    $: areaPath =
-        `M 0 ${height} ` +
-        points.map((p) => `L ${p.x} ${p.y}`).join(" ") +
-        ` L ${width} ${height} Z`;
+    // Generate paths for each series
+    $: seriesPaths = seriesPoints.map((s) => {
+        const linePath =
+            s.points.length > 0
+                ? `M 0 ${s.points[0].y} ` +
+                  s.points.map((p) => `L ${p.x} ${p.y}`).join(" ")
+                : "";
 
-    $: linePath =
-        points.length > 0
-            ? `M 0 ${points[0].y} ` +
-              points.map((p) => `L ${p.x} ${p.y}`).join(" ")
-            : "";
+        // Area logic: close the path at the bottom
+        const areaPath =
+            `M 0 ${innerHeight} ` +
+            s.points.map((p) => `L ${p.x} ${p.y}`).join(" ") +
+            ` L ${innerWidth} ${innerHeight} Z`;
+
+        return { ...s, linePath, areaPath };
+    });
+
+    // Axis Generation
+    $: yTicks = [0, 0.25, 0.5, 0.75, 1].map((p) => p * maxVal);
+    $: xTicksData =
+        series[0]?.data.filter(
+            (_, i) => i % Math.ceil((series[0]?.data.length || 10) / 6) === 0,
+        ) || [];
 
     function handleMouseMove(e) {
-        if (!container) return;
+        if (!container || series.length === 0) return;
         const rect = container.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const index = Math.min(
-            Math.max(Math.round(x / xStep), 0),
-            data.length - 1,
-        );
+        const x = e.clientX - rect.left - marginLeft;
+
+        if (x < 0 || x > innerWidth) {
+            hoverIndex = -1;
+            return;
+        }
+
+        const dataLen = series[0].data.length;
+        const index = Math.min(Math.round(x / xStep), dataLen - 1);
 
         hoverIndex = index;
-        tooltipX = x;
-        if (points[index]) {
-            tooltipX = points[index].x;
+        // Use the first series for X positioning
+        if (seriesPoints[0]?.points[index]) {
+            tooltipX = seriesPoints[0].points[index].x;
+            // Y is tricky with multiple series, maybe just stick to top or follow one?
+            // Let's just keep X alignment.
         }
     }
 
@@ -67,7 +109,7 @@
             class="flex items-center gap-2 space-y-0 border-b border-white/5 py-5 sm:flex-row"
         >
             <div class="grid flex-1 gap-1 text-center sm:text-left">
-                <Card.Title>Filings Activity</Card.Title>
+                <Card.Title>{label} Activity</Card.Title>
                 <Card.Description>
                     Showing total filings for the last {timeRange === "90d"
                         ? "3 months"
@@ -75,6 +117,18 @@
                           ? "30 days"
                           : "7 days"}
                 </Card.Description>
+            </div>
+            <!-- Legend -->
+            <div class="flex items-center gap-4 text-xs">
+                {#each series as s}
+                    <div class="flex items-center gap-1.5">
+                        <div
+                            class="w-2 h-2 rounded-full"
+                            style="background-color: {s.color}"
+                        ></div>
+                        <span class="text-muted-foreground">{s.name}</span>
+                    </div>
+                {/each}
             </div>
         </Card.Header>
 
@@ -87,7 +141,7 @@
                 on:mouseleave={handleMouseLeave}
                 role="img"
             >
-                {#if width > 0 && data.length > 0}
+                {#if width > 0 && series.length > 0}
                     <svg
                         {width}
                         {height}
@@ -95,75 +149,147 @@
                         class="overflow-visible"
                     >
                         <defs>
-                            <linearGradient
-                                id="fillGradient"
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="1"
-                            >
-                                <stop
-                                    offset="5%"
-                                    stop-color="hsl(263.4 70% 50.4%)"
-                                    stop-opacity="0.8"
-                                />
-                                <stop
-                                    offset="95%"
-                                    stop-color="hsl(263.4 70% 50.4%)"
-                                    stop-opacity="0.1"
-                                />
-                            </linearGradient>
+                            {#each series as s, i}
+                                <linearGradient
+                                    id="fillGradient-{i}"
+                                    x1="0"
+                                    y1="0"
+                                    x2="0"
+                                    y2="1"
+                                >
+                                    <stop
+                                        offset="5%"
+                                        stop-color={s.color}
+                                        stop-opacity="0.3"
+                                    />
+                                    <stop
+                                        offset="95%"
+                                        stop-color={s.color}
+                                        stop-opacity="0.05"
+                                    />
+                                </linearGradient>
+                            {/each}
                         </defs>
 
-                        <!-- Area -->
-                        <path d={areaPath} fill="url(#fillGradient)" />
-                        <!-- Line -->
-                        <path
-                            d={linePath}
-                            fill="none"
-                            stroke="hsl(263.4 70% 50.4%)"
-                            stroke-width="2"
-                        />
+                        <g transform="translate({marginLeft}, {marginTop})">
+                            <!-- Y-Axis Grid & Labels -->
+                            {#each yTicks as tick}
+                                <line
+                                    x1="0"
+                                    y1={innerHeight -
+                                        (tick / maxVal) * innerHeight}
+                                    x2={innerWidth}
+                                    y2={innerHeight -
+                                        (tick / maxVal) * innerHeight}
+                                    stroke="white"
+                                    stroke-opacity="0.1"
+                                />
+                                <text
+                                    x="-10"
+                                    y={innerHeight -
+                                        (tick / maxVal) * innerHeight}
+                                    fill="white"
+                                    opacity="0.5"
+                                    font-size="10"
+                                    text-anchor="end"
+                                    dominant-baseline="middle"
+                                >
+                                    {formatValue(tick)}
+                                </text>
+                            {/each}
 
-                        <!-- Interactive Elements -->
-                        {#if hoverIndex !== -1 && points[hoverIndex]}
-                            <line
-                                x1={points[hoverIndex].x}
-                                y1={0}
-                                x2={points[hoverIndex].x}
-                                y2={height}
-                                stroke="white"
-                                stroke-dasharray="4 4"
-                                opacity="0.5"
-                            />
-                            <circle
-                                cx={points[hoverIndex].x}
-                                cy={points[hoverIndex].y}
-                                r="4"
-                                fill="white"
-                                stroke="hsl(263.4 70% 50.4%)"
-                                stroke-width="2"
-                            />
-                        {/if}
+                            <!-- X-Axis Labels -->
+                            {#each xTicksData as d, i}
+                                {@const tickX =
+                                    series[0].data.indexOf(d) * xStep}
+                                <text
+                                    x={tickX}
+                                    y={innerHeight + 15}
+                                    fill="white"
+                                    opacity="0.5"
+                                    font-size="10"
+                                    text-anchor="middle"
+                                >
+                                    {d.date}
+                                </text>
+                            {/each}
+
+                            <!-- Series Layers (Area then Line) -->
+                            {#each seriesPaths as s, i}
+                                <!-- Area -->
+                                <path
+                                    d={s.areaPath}
+                                    fill="url(#fillGradient-{i})"
+                                />
+                                <!-- Line -->
+                                <path
+                                    d={s.linePath}
+                                    fill="none"
+                                    stroke={s.color}
+                                    stroke-width="2"
+                                />
+                            {/each}
+
+                            <!-- Interactive Elements -->
+                            {#if hoverIndex !== -1 && seriesPoints[0]?.points[hoverIndex]}
+                                <!-- Vertical Line -->
+                                <line
+                                    x1={seriesPoints[0].points[hoverIndex].x}
+                                    y1={0}
+                                    x2={seriesPoints[0].points[hoverIndex].x}
+                                    y2={innerHeight}
+                                    stroke="white"
+                                    stroke-dasharray="4 4"
+                                    opacity="0.5"
+                                />
+                                <!-- Dots for each series -->
+                                {#each seriesPoints as s}
+                                    {#if s.points[hoverIndex]}
+                                        <circle
+                                            cx={s.points[hoverIndex].x}
+                                            cy={s.points[hoverIndex].y}
+                                            r="4"
+                                            fill="white"
+                                            stroke={s.color}
+                                            stroke-width="2"
+                                        />
+                                    {/if}
+                                {/each}
+                            {/if}
+                        </g>
                     </svg>
 
                     <!-- Tooltip -->
-                    {#if hoverIndex !== -1 && points[hoverIndex]}
+                    {#if hoverIndex !== -1 && seriesPoints[0]?.points[hoverIndex]}
                         <div
                             class="absolute bg-slate-900 border border-slate-700 p-2 rounded shadow-lg text-xs pointer-events-none z-10"
-                            style="left: {points[hoverIndex]
-                                .x}px; top: 0; transform: translate(-50%, -100%); white-space: nowrap;"
+                            style="left: {seriesPoints[0].points[hoverIndex].x +
+                                marginLeft}px; top: 0; transform: translate(-50%, -100%); white-space: nowrap;"
                         >
-                            <div class="font-bold mb-1 text-white">
-                                {data[hoverIndex].date}
+                            <div
+                                class="font-bold mb-1 text-white border-b border-white/10 pb-1"
+                            >
+                                {seriesPoints[0].points[hoverIndex].date}
                             </div>
-                            <div class="flex items-center gap-2">
-                                <div
-                                    class="w-2 h-2 rounded-full bg-[hsl(263.4_70%_50.4%)]"
-                                ></div>
-                                <span class="text-slate-200"
-                                    >Filings: {data[hoverIndex].count}</span
-                                >
+                            <div class="flex flex-col gap-1">
+                                {#each seriesPoints as s}
+                                    {#if s.points[hoverIndex]}
+                                        <div class="flex items-center gap-2">
+                                            <div
+                                                class="w-2 h-2 rounded-full"
+                                                style="background-color: {s.color}"
+                                            ></div>
+                                            <span class="text-slate-300"
+                                                >{s.name}:</span
+                                            >
+                                            <span class="text-white font-mono"
+                                                >{formatValue(
+                                                    s.points[hoverIndex].val,
+                                                )}</span
+                                            >
+                                        </div>
+                                    {/if}
+                                {/each}
                             </div>
                         </div>
                     {/if}

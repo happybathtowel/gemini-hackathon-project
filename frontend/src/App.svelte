@@ -19,6 +19,7 @@
     analyzeCompany,
     getTrackedTickers,
     analyzeBatch,
+    getStockHistory,
   } from "./api";
 
   let trackedTickers = new Set();
@@ -152,32 +153,51 @@
   // Time Range for Chart
   let timeRange = "90d";
 
-  // Derive Chart Data (Filings over time)
-  $: chartData = (() => {
-    const allFilings = Object.values(filingsMap).flat();
-    const countsByDate = {};
+  // Stock Price Data
+  let stockSeries = [];
+  const colors = [
+    "hsl(263.4 70% 50.4%)", // Violet (Primary)
+    "hsl(217.2 91.2% 59.8%)", // Blue
+    "hsl(142.1 76.2% 36.3%)", // Green
+    "hsl(47.9 95.8% 53.1%)", // Yellow
+    "hsl(346.8 77.2% 49.8%)", // Red
+    "hsl(24.6 95% 53.1%)", // Orange
+  ];
 
-    allFilings.forEach((f) => {
-      // Normalize date to YYYY-MM-DD
-      const date = f.filingDate.split(" ")[0]; // Assuming "YYYY-MM-DD" or similar
-      countsByDate[date] = (countsByDate[date] || 0) + 1;
-    });
+  async function updateStockChart() {
+    if (trackedTickers.size > 0) {
+      const tickers = Array.from(trackedTickers);
+      try {
+        const promises = tickers.map((ticker) =>
+          getStockHistory(ticker, "1mo"),
+        );
+        const results = await Promise.all(promises);
 
-    // Sort by date
-    const sortedDates = Object.keys(countsByDate).sort();
+        stockSeries = results.map((res, index) => ({
+          name: res.ticker,
+          color: colors[index % colors.length],
+          data: res.history.map((h) => ({
+            value: h.price,
+            date: h.date,
+          })),
+        }));
+      } catch (e) {
+        console.error("Failed to load stock history", e);
+      }
+    } else {
+      stockSeries = [];
+    }
+  }
 
-    // Fill in gaps? For now, just map existing dates.
-    // Ideally we'd fill gaps with 0 for a smooth line, but let's start simple.
-    return sortedDates.map((date) => ({
-      date,
-      count: countsByDate[date],
-    }));
-  })();
+  // Reactively update chart when tickers change
+  $: if (trackedTickers.size >= 0) {
+    updateStockChart();
+  }
 
+  // Restore allFilings for ReportsList
   $: allFilings = Object.values(filingsMap)
     .flat()
     .sort((a, b) => {
-      // Simple string comparison for date if format is YYYY-MM-DD, otherwise construct Date objects
       return (
         new Date(b.filingDate).getTime() - new Date(a.filingDate).getTime()
       );
@@ -194,10 +214,10 @@
       <div class="flex items-center justify-between space-y-2">
         <h2 class="text-3xl font-bold tracking-tight text-white">Dashboard</h2>
         <div class="flex items-center space-x-2">
-          <Button variant="outline" class="hidden sm:flex items-center gap-2">
+          <!-- <Button variant="outline" class="hidden sm:flex items-center gap-2">
             <Calendar class="h-4 w-4" />
             <span>Jan 20, 2023 - Feb 09, 2023</span>
-          </Button>
+          </Button> -->
           <Button size="sm">
             <Download class="mr-2 h-4 w-4" />
             Download
@@ -222,7 +242,12 @@
         </Tabs.List>
 
         <Tabs.Content value="overview" class="space-y-4">
-          <InteractiveAreaChart data={chartData} {timeRange} />
+          <InteractiveAreaChart
+            series={stockSeries}
+            {timeRange}
+            label={"Price"}
+            formatValue={(v) => `$${v.toFixed(2)}`}
+          />
           <DashboardStats
             trackedCount={trackedTickers.size}
             {totalFilings}

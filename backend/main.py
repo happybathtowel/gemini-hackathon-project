@@ -206,3 +206,42 @@ def get_feed():
     # Sort by date desc
     feed_items.sort(key=lambda x: x['filingDate'], reverse=True)
     return {"updates": feed_items[:20]}
+
+@app.get("/api/stock-history")
+def get_stock_history(ticker: str, period: str = "1mo"):
+    """
+    Get stock price history for a ticker.
+    """
+    import yfinance as yf
+    import pandas as pd
+    
+    logger.info(f"Fetching stock history for {ticker} over {period}")
+    
+    try:
+        ticker = ticker.upper()
+        stock = yf.Ticker(ticker)
+        # Fetch history
+        # period options: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
+        hist = stock.history(period=period)
+        
+        if hist.empty:
+            logger.warning(f"No stock history found for {ticker}")
+            return {"ticker": ticker, "history": []}
+            
+        # Reset index to get Date as a column
+        hist = hist.reset_index()
+        
+        # Format for frontend: { date: "YYYY-MM-DD", price: float }
+        data = []
+        for index, row in hist.iterrows():
+            # Date might be Timestamp
+            date_str = row['Date'].strftime('%Y-%m-%d')
+            # Use Close price
+            price = round(row['Close'], 2)
+            data.append({"date": date_str, "price": price})
+            
+        return {"ticker": ticker, "history": data}
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch stock history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
