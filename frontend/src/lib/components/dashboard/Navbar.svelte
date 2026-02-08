@@ -19,7 +19,7 @@
     // Team Switcher State
     let open = false;
     let selectedTeam = {
-        label: "Alicia Koch",
+        label: "Demo User",
         value: "personal",
     };
 
@@ -28,7 +28,7 @@
             label: "Personal Account",
             teams: [
                 {
-                    label: "Alicia Koch",
+                    label: "Demo User",
                     value: "personal",
                 },
             ],
@@ -114,7 +114,7 @@
                                 />
                                 <Avatar.Fallback>SC</Avatar.Fallback>
                             </Avatar.Root>
-                            Alicia Koch
+                            Demo User
                             <Check
                                 class={cn(
                                     "ml-auto h-4 w-4",
