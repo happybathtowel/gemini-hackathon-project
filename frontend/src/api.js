@@ -40,3 +40,13 @@ export async function getTrackedTickers() {
     if (!response.ok) throw new Error("Failed to get tracked tickers");
     return response.json();
 }
+
+export async function analyzeBatch(ticker, filings) {
+    const response = await fetch(`${API_BASE}/api/analyze-batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker, filings }),
+    });
+    if (!response.ok) throw new Error("Failed to analyze batch");
+    return response.json();
+}

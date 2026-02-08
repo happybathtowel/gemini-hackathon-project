@@ -18,6 +18,7 @@
     getFeed,
     analyzeCompany,
     getTrackedTickers,
+    analyzeBatch,
   } from "./api";
 
   let trackedTickers = new Set();
@@ -80,6 +81,33 @@
       activeAnalysis = {
         ticker,
         form: `${form} Analysis`,
+        content: res.analysis,
+      };
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      loadingAnalysis = false;
+      loadingStatus = "";
+    }
+  }
+
+  async function handleAnalyzeBatch(event) {
+    const filings = event.detail; // Array of filings
+    if (!filings || filings.length === 0) return;
+
+    const ticker = filings[0].ticker;
+    const form = filings[0].form;
+    const date = filings[0].filingDate;
+
+    loadingAnalysis = true;
+    loadingStatus = `Analyzing batch of ${filings.length} ${form} filings...`;
+
+    try {
+      const res = await analyzeBatch(ticker, filings);
+      activeAnalysis = {
+        ticker,
+        form: `${form} Batch (${date})`,
+        title: `Batch Analysis (${filings.length} filings)`,
         content: res.analysis,
       };
     } catch (e) {
@@ -230,7 +258,11 @@
                 View and analyze all tracked filings.
               </p>
             </div>
-            <ReportsList {allFilings} onAnalyze={handleAnalyze} />
+            <ReportsList
+              {allFilings}
+              onAnalyze={handleAnalyze}
+              on:analyzeBatch={handleAnalyzeBatch}
+            />
           </div>
         </Tabs.Content>
       </Tabs.Root>

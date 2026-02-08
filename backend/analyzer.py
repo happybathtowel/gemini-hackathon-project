@@ -185,3 +185,78 @@ def analyze_company_comprehensive(ticker: str, filings_list: list) -> str:
         logger.error(f"Comprehensive analysis failed: {e}")
         return f"Comprehensive analysis failed: {str(e)}"
 
+
+def analyze_filings_batch(ticker: str, filings_list: list) -> str:
+    """
+    Analyze a batch of filings (e.g., multiple Form 4s from the same day).
+    filings_list: list of dicts { 'form': str, 'filingDate': str, 'content': str, 'accessionNumber': str }
+    """
+    if not client:
+        return "Error: GOOGLE_API_KEY not configured."
+
+    if not filings_list:
+        return "No filings provided for analysis."
+
+    # Generate cache key
+    accession_ids = sorted([f.get('accessionNumber', '') for f in filings_list])
+    cache_key = f"batch_{ticker}_{hashlib.md5(json.dumps(accession_ids).encode('utf-8')).hexdigest()}"
+    cache_path = get_cache_path(cache_key)
+
+    if os.path.exists(cache_path):
+        logger.info(f"Batch analysis cache hit for {ticker}")
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except:
+            pass
+
+    # Construct Prompt
+    combined_text = f"Batch Analysis Context for {ticker}:\n\n"
+    form_type = filings_list[0]['form'] if filings_list else "Filings"
+    
+    for filing in filings_list:
+        form = filing['form']
+        date = filing['filingDate']
+        # For Form 4s, the content is usually short XML/HTML tables.
+        # We limit content size just in case.
+        content = filing.get('content', '')[:10000] 
+        
+        combined_text += f"---\nDOCUMENT: {form} (Filed: {date})\nACCESSION: {filing.get('accessionNumber')}\nCONTENT:\n{content}\n---\n\n"
+
+    prompt = f"""
+    You are a financial analyst reviewing a batch of {form_type} filings for {ticker} filed on the same day.
+    
+    Goal: Summarize the *aggregate* impact of these filings. 
+    
+    If these are Form 4s (Insider Trading):
+    - Who are the key insiders trading?
+    - Is it a coordinated buy/sell?
+    - What is the total volume and value (approximate) of shares traded?
+    - Are these automatic trades (10b5-1)?
+    
+    If these are other forms:
+    - Summarize the common theme or distinct events reported.
+    
+    Data:
+    {combined_text}
+    
+    Provide a concise summary in markdown.
+    """
+    
+    try:
+        response = client.models.generate_content(
+            model='gemini-3-flash-preview', 
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.2
+            )
+        )
+        result = response.text
+        
+        with open(cache_path, "w", encoding="utf-8") as f:
+            f.write(result)
+            
+        return result
+    except Exception as e:
+        logger.error(f"Batch analysis failed: {e}")
+        return f"Batch analysis failed: {str(e)}"

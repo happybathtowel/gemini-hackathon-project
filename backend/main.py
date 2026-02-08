@@ -138,7 +138,46 @@ def analyze_company(request: CompanyAnalysisRequest):
     from analyzer import analyze_company_comprehensive
     report = analyze_company_comprehensive(ticker, filing_data_list)
     
-    return {"report": report}
+
+
+
+# Redefining Request to include metadata
+class FilingMetadata(BaseModel):
+    url: str
+    form: str
+    filingDate: str
+    accessionNumber: str
+
+class BatchAnalysisRequest(BaseModel):
+    ticker: str
+    filings: list[FilingMetadata]
+
+@app.post("/api/analyze-batch")
+def analyze_filings_batch_endpoint(request: BatchAnalysisRequest):
+    """
+    Analyze a batch of filings.
+    """
+    ticker = request.ticker.upper()
+    logger.info(f"Received batch analysis request for {ticker} with {len(request.filings)} filings")
+    
+    filings_list = []
+    for f in request.filings:
+        text = get_filing_text(f.url)
+        if text:
+            filings_list.append({
+                'form': f.form,
+                'filingDate': f.filingDate,
+                'accessionNumber': f.accessionNumber,
+                'content': text
+            })
+            
+    if not filings_list:
+         raise HTTPException(status_code=400, detail="Could not retrieve text for any filings")
+         
+    from analyzer import analyze_filings_batch
+    report = analyze_filings_batch(ticker, filings_list)
+    return {"analysis": report}
+
 
 @app.get("/api/tracked")
 def get_tracked_tickers_endpoint():
