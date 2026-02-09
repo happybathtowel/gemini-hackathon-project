@@ -1,8 +1,9 @@
 <script>
   import { onMount } from "svelte";
-  import { Calendar, Download } from "lucide-svelte";
+  import { Calendar, Download, ChevronDown } from "lucide-svelte";
   import { Button } from "$lib/components/ui/button";
   import * as Tabs from "$lib/components/ui/tabs";
+  import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
 
   import Navbar from "$lib/components/dashboard/Navbar.svelte";
   import DashboardStats from "$lib/components/dashboard/DashboardStats.svelte";
@@ -202,6 +203,24 @@
   let confidenceSentiment = "Neutral";
   let confidenceSummary = "Click refresh to analyze recent filings.";
   let confidenceReasoning = [];
+  let confidenceCache = {}; // { ticker: { score, sentiment, summary, reasoning } }
+
+  function handleTickerSelect(ticker) {
+    selectedTicker = ticker;
+
+    if (confidenceCache[ticker]) {
+      const cached = confidenceCache[ticker];
+      confidenceScore = cached.score;
+      confidenceSentiment = cached.sentiment;
+      confidenceSummary = cached.summary;
+      confidenceReasoning = cached.reasoning;
+    } else {
+      confidenceScore = 50;
+      confidenceSentiment = "Neutral";
+      confidenceSummary = "Click refresh to analyze " + ticker;
+      confidenceReasoning = [];
+    }
+  }
 
   async function calculateConfidence() {
     if (allFilings.length === 0) {
@@ -239,6 +258,14 @@
           confidenceSummary = res.analysis.summary || "No summary provided.";
           // Handle potential missing field if backend is old version or failed to parse
           confidenceReasoning = res.analysis.reasoning || [];
+
+          // Cache the result
+          confidenceCache[ticker] = {
+            score: confidenceScore,
+            sentiment: confidenceSentiment,
+            summary: confidenceSummary,
+            reasoning: confidenceReasoning,
+          };
         } else {
           // Fallback for text
           confidenceSummary = "Analysis complete (Text format).";
@@ -275,10 +302,56 @@
             <Calendar class="h-4 w-4" />
             <span>Jan 20, 2023 - Feb 09, 2023</span>
           </Button> -->
-          <Button size="sm" class="gap-2" disabled={false}>
-            <Download class="mr-2 h-4 w-4" />
-            Download
-          </Button>
+          <div class="flex items-center gap-2">
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                {#snippet children({ props })}
+                  <Button
+                    {...props}
+                    variant="outline"
+                    size="sm"
+                    class="gap-2 min-w-[140px] justify-between"
+                    disabled={false}
+                  >
+                    <span class="truncate"
+                      >{selectedTicker || "Select Ticker"}</span
+                    >
+                    <ChevronDown class="h-4 w-4 opacity-50" />
+                  </Button>
+                {/snippet}
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Content
+                class="w-[200px]"
+                align="end"
+                portalProps={{}}
+              >
+                <DropdownMenu.Label class="font-normal" inset={false}
+                  >Select Ticker</DropdownMenu.Label
+                >
+                <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
+                {#if trackedTickers.size === 0}
+                  <div class="p-2 text-sm text-muted-foreground text-center">
+                    No tickers tracked
+                  </div>
+                {:else}
+                  {#each Array.from(trackedTickers) as ticker}
+                    <DropdownMenu.Item
+                      onclick={() => handleTickerSelect(ticker)}
+                      class="cursor-pointer"
+                      inset={false}
+                    >
+                      {ticker}
+                    </DropdownMenu.Item>
+                  {/each}
+                {/if}
+              </DropdownMenu.Content>
+            </DropdownMenu.Root>
+
+            <Button size="sm" class="gap-2" disabled={false}>
+              <Download class="mr-2 h-4 w-4" />
+              Download
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -321,12 +394,7 @@
                 {filingsMap}
                 onAnalyze={handleAnalyze}
                 onComprehensiveAnalyze={handleComprehensiveAnalyze}
-                onSelect={(ticker) => {
-                  selectedTicker = ticker;
-                  // Also trigger confidence calculation update if needed?
-                  // calculateConfidence is called via refresh button, but maybe nice to reset/clear old confidence?
-                  confidenceSummary = "Click refresh to analyze " + ticker;
-                }}
+                onSelect={handleTickerSelect}
               />
             </div>
 
