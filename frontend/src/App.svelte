@@ -253,7 +253,10 @@
       if (res.analysis) {
         // Check if it's the new JSON format
         if (typeof res.analysis === "object") {
-          confidenceScore = res.analysis.confidence_score || 50;
+          confidenceScore =
+            res.analysis.confidence_score !== undefined
+              ? res.analysis.confidence_score
+              : 50;
           confidenceSentiment = res.analysis.sentiment || "Neutral";
           confidenceSummary = res.analysis.summary || "No summary provided.";
           // Handle potential missing field if backend is old version or failed to parse
@@ -548,6 +551,7 @@
               <Button
                 class="w-full"
                 onclick={() => alert("Email alerts coming soon!")}
+                disabled={false}
               >
                 Subscribe to Alerts
               </Button>
