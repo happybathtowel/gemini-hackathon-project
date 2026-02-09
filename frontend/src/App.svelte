@@ -518,6 +518,42 @@
             />
           </div>
         </Tabs.Content>
+
+        <Tabs.Content value="notifications" class="space-y-4">
+          <div
+            class="border border-white/10 rounded-xl p-6 bg-slate-800/50 max-w-md mx-auto mt-10"
+          >
+            <div class="mb-6 text-center">
+              <h3 class="text-xl font-medium text-white mb-2">
+                Get Email Alerts
+              </h3>
+              <p class="text-sm text-muted-foreground">
+                Subscribe to get notified when new filings are analyzed for your
+                tracked tickers.
+              </p>
+            </div>
+
+            <div class="space-y-4">
+              <div class="space-y-2">
+                <label for="email" class="text-sm font-medium text-slate-300"
+                  >Email Address</label
+                >
+                <input
+                  type="email"
+                  id="email"
+                  placeholder="you@example.com"
+                  class="flex h-10 w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-white"
+                />
+              </div>
+              <Button
+                class="w-full"
+                onclick={() => alert("Email alerts coming soon!")}
+              >
+                Subscribe to Alerts
+              </Button>
+            </div>
+          </div>
+        </Tabs.Content>
       </Tabs.Root>
     </main>
   </div>
