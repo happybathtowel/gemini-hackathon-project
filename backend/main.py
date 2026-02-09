@@ -175,8 +175,25 @@ def analyze_filings_batch_endpoint(request: BatchAnalysisRequest):
          raise HTTPException(status_code=400, detail="Could not retrieve text for any filings")
          
     from analyzer import analyze_filings_batch
+    import json
+    
     report = analyze_filings_batch(ticker, filings_list)
-    return {"analysis": report}
+    
+    # analyzer.py now returns a JSON string. 
+    # We should try to parse it to return a proper JSON object to frontend.
+    try:
+        # It comes back as a markdown code block sometimes ```json ... ```
+        clean_report = report.replace("```json", "").replace("```", "").strip()
+        analysis_data = json.loads(clean_report)
+        return {"analysis": analysis_data}
+    except Exception as e:
+        logger.warning(f"Failed to parse JSON from batch analysis: {e}")
+        # Fallback for old text format or errors
+        return {"analysis": {
+            "confidence_score": 50,
+            "sentiment": "Neutral",
+            "summary": report
+        }}
 
 
 @app.get("/api/tracked")

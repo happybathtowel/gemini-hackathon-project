@@ -11,6 +11,7 @@
   import AnalysisModal from "$lib/components/dashboard/AnalysisModal.svelte";
   import InteractiveAreaChart from "$lib/components/dashboard/InteractiveAreaChart.svelte";
   import ReportsList from "$lib/components/dashboard/ReportsList.svelte";
+  import ConfidenceMeter from "$lib/components/dashboard/ConfidenceMeter.svelte";
 
   import {
     trackTicker,
@@ -29,6 +30,7 @@
   let loadingAnalysis = false;
   let loadingStatus = "";
   let feedItems = [];
+  let selectedTicker = null;
 
   onMount(async () => {
     try {
@@ -62,6 +64,7 @@
       const data = await trackTicker(ticker);
       trackedTickers.add(data.ticker);
       trackedTickers = trackedTickers;
+      selectedTicker = data.ticker;
       filingsMap[data.ticker] = data.recent_filings;
 
       // Refresh feed
@@ -194,6 +197,60 @@
     updateStockChart();
   }
 
+  // Insider Confidence State
+  let confidenceScore = 50;
+  let confidenceSentiment = "Neutral";
+  let confidenceSummary = "Click refresh to analyze recent filings.";
+  let confidenceReasoning = [];
+
+  async function calculateConfidence() {
+    if (allFilings.length === 0) {
+      confidenceSummary = "No filings available to analyze.";
+      return;
+    }
+
+    confidenceSummary = "Analyzing recent filings for whale activity...";
+
+    // Filter filings by selected ticker if available
+    let relevantFilings = allFilings;
+    if (selectedTicker) {
+      relevantFilings = allFilings.filter((f) => f.ticker === selectedTicker);
+    }
+
+    if (relevantFilings.length === 0) {
+      confidenceSummary = `No filings available for ${selectedTicker || "analysis"}.`;
+      return;
+    }
+
+    // Take top 20 recent filings
+    const recentFilings = relevantFilings.slice(0, 20);
+    const ticker = selectedTicker || recentFilings[0].ticker;
+    console.log("Analyzing ticker:", ticker);
+
+    confidenceSummary = `Analyzing ${ticker} filings...`;
+
+    try {
+      const res = await analyzeBatch(ticker, recentFilings);
+      if (res.analysis) {
+        // Check if it's the new JSON format
+        if (typeof res.analysis === "object") {
+          confidenceScore = res.analysis.confidence_score || 50;
+          confidenceSentiment = res.analysis.sentiment || "Neutral";
+          confidenceSummary = res.analysis.summary || "No summary provided.";
+          // Handle potential missing field if backend is old version or failed to parse
+          confidenceReasoning = res.analysis.reasoning || [];
+        } else {
+          // Fallback for text
+          confidenceSummary = "Analysis complete (Text format).";
+          confidenceReasoning = [];
+        }
+      }
+    } catch (e) {
+      console.error("Confidence analysis failed", e);
+      confidenceSummary = "Failed to calculate confidence.";
+    }
+  }
+
   // Restore allFilings for ReportsList
   $: allFilings = Object.values(filingsMap)
     .flat()
@@ -218,7 +275,7 @@
             <Calendar class="h-4 w-4" />
             <span>Jan 20, 2023 - Feb 09, 2023</span>
           </Button> -->
-          <Button size="sm">
+          <Button size="sm" class="gap-2" disabled={false}>
             <Download class="mr-2 h-4 w-4" />
             Download
           </Button>
@@ -264,6 +321,12 @@
                 {filingsMap}
                 onAnalyze={handleAnalyze}
                 onComprehensiveAnalyze={handleComprehensiveAnalyze}
+                onSelect={(ticker) => {
+                  selectedTicker = ticker;
+                  // Also trigger confidence calculation update if needed?
+                  // calculateConfidence is called via refresh button, but maybe nice to reset/clear old confidence?
+                  confidenceSummary = "Click refresh to analyze " + ticker;
+                }}
               />
             </div>
 
@@ -273,6 +336,103 @@
               <RecentActivity {feedItems} />
             </div>
           </div>
+        </Tabs.Content>
+
+        <Tabs.Content value="analytics" class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold text-white">
+              {#if selectedTicker}
+                Analytics for <span class="text-blue-400">{selectedTicker}</span
+                >
+              {:else}
+                Select a company to view analytics
+              {/if}
+            </h3>
+          </div>
+
+          {#if selectedTicker}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Insider Confidence Meter -->
+              <ConfidenceMeter
+                score={confidenceScore}
+                sentiment={confidenceSentiment}
+                summary={confidenceSummary}
+                ticker={selectedTicker}
+                on:refresh={calculateConfidence}
+              />
+
+              <!-- Confidence Reasoning / Explanation -->
+              <div
+                class="bg-slate-800/50 border border-white/10 rounded-xl p-6 flex flex-col"
+              >
+                <div class="flex items-center justify-between mb-4">
+                  <h4 class="text-lg font-semibold text-white">
+                    Analysis Reasoning
+                  </h4>
+                  {#if confidenceReasoning.length > 0}
+                    <span
+                      class="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded-full border border-white/5"
+                      >{confidenceReasoning.length} factors</span
+                    >
+                  {/if}
+                </div>
+
+                {#if confidenceReasoning && confidenceReasoning.length > 0}
+                  <ul class="space-y-3">
+                    {#each confidenceReasoning as point}
+                      <li class="flex items-start gap-3 text-sm text-slate-300">
+                        <span
+                          class="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"
+                        ></span>
+                        <span class="leading-relaxed">{point}</span>
+                      </li>
+                    {/each}
+                  </ul>
+                {:else}
+                  <div
+                    class="flex-1 flex flex-col items-center justify-center text-center p-4"
+                  >
+                    <p class="text-slate-400 italic mb-2">
+                      No detailed reasoning available.
+                    </p>
+                    <p class="text-xs text-slate-500">
+                      Try refreshing the analysis to generate key insights.
+                    </p>
+                  </div>
+                {/if}
+              </div>
+            </div>
+          {:else}
+            <div
+              class="p-12 text-center border border-dashed border-slate-700 rounded-xl bg-slate-900/20"
+            >
+              <div
+                class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-8 h-8 text-slate-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+              <h4 class="text-lg font-medium text-white mb-2">
+                No Company Selected
+              </h4>
+              <p class="text-slate-400 max-w-md mx-auto">
+                Search for and select a company in the Overview tab to view
+                detailed insider confidence analysis.
+              </p>
+            </div>
+          {/if}
         </Tabs.Content>
 
         <Tabs.Content value="reports" class="space-y-4">

@@ -224,23 +224,35 @@ def analyze_filings_batch(ticker: str, filings_list: list) -> str:
         combined_text += f"---\nDOCUMENT: {form} (Filed: {date})\nACCESSION: {filing.get('accessionNumber')}\nCONTENT:\n{content}\n---\n\n"
 
     prompt = f"""
-    You are a financial analyst reviewing a batch of {form_type} filings for {ticker} filed on the same day.
+    You are a senior financial analyst specializing in insider trading interpretation.
     
-    Goal: Summarize the *aggregate* impact of these filings. 
+    Goal: Analyze the following batch of {form_type} filings for {ticker} to determine an "Insider Confidence Score" (0-100).
     
-    If these are Form 4s (Insider Trading):
-    - Who are the key insiders trading?
-    - Is it a coordinated buy/sell?
-    - What is the total volume and value (approximate) of shares traded?
-    - Are these automatic trades (10b5-1)?
+    Scoring Criteria (0-100):
+    - 0-20 (Extreme Bearish): Significant unplanned selling by key executives or major shareholders.
+    - 40-60 (Neutral): Routine activity, option exercises, tax withholdings, or mixed signals.
+    - 80-100 (Extreme Bullish): Significant unplanned open-market buying by key executives or major shareholders (10% owners).
     
-    If these are other forms:
-    - Summarize the common theme or distinct events reported.
+    CRITICAL WEIGHTING FACTORS:
+    1. **Unplanned Trades**: Trades NOT under a 10b5-1 plan MUST carry significantly more weight. Look for "10b5-1" mentions in footnotes to identify planned trades.
+    2. **Major Shareholders (10% Owners)**: Unplanned buying by major shareholders is a massive bullish signal. Unplanned selling is a bearish signal.
+    3. **Cluster Buying**: Multiple insiders buying within a short period is a strong bullish multiplier.
+    4. **Value**: High dollar value trades should have more impact.
     
     Data:
     {combined_text}
     
-    Provide a concise summary in markdown.
+    Output structured JSON ONLY:
+    {{
+        "confidence_score": <int 0-100>,
+        "sentiment": "<Bullish|Bearish|Neutral>",
+        "summary": "<Concise 2-sentence summary explaining the score, highlighting specific whales or patterns.>",
+        "reasoning": [
+            "<Key factor 1>",
+            "<Key factor 2>",
+            "<Key factor 3>"
+        ]
+    }}
     """
     
     try:
@@ -248,15 +260,21 @@ def analyze_filings_batch(ticker: str, filings_list: list) -> str:
             model='gemini-3-flash-preview', 
             contents=prompt,
             config=types.GenerateContentConfig(
-                temperature=0.2
+                temperature=0.1,
+                response_mime_type="application/json"
             )
         )
         result = response.text
         
+        # Save to cache
         with open(cache_path, "w", encoding="utf-8") as f:
             f.write(result)
             
         return result
     except Exception as e:
         logger.error(f"Batch analysis failed: {e}")
-        return f"Batch analysis failed: {str(e)}"
+        return json.dumps({
+            "confidence_score": 50,
+            "sentiment": "Error",
+            "summary": f"Analysis failed: {str(e)}"
+        })

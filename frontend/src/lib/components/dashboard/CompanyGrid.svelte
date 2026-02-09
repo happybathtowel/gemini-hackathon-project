@@ -6,6 +6,7 @@
     export let filingsMap = {};
     export let onAnalyze;
     export let onComprehensiveAnalyze;
+    export let onSelect;
 
     $: chartData = Array.from(trackedTickers).map((ticker) => {
         const count = filingsMap[ticker]?.length || 0;
@@ -21,11 +22,15 @@
         {#if chartData.length > 0}
             <div class="space-y-4">
                 {#each chartData as data}
-                    <div class="flex items-center">
+                    <div
+                        class="flex items-center cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors"
+                        on:click={() => onSelect && onSelect(data.name)}
+                    >
                         <div class="w-16 text-sm font-medium">{data.name}</div>
                         <div
-                            class="flex-1 h-8 bg-secondary rounded-full overflow-hidden mx-4 relative group cursor-pointer"
-                            on:click={() => onComprehensiveAnalyze(data.name)}
+                            class="flex-1 h-8 bg-secondary rounded-full overflow-hidden mx-4 relative group"
+                            on:click|stopPropagation={() =>
+                                onComprehensiveAnalyze(data.name)}
                         >
                             <div
                                 class="h-full bg-primary transition-all duration-500 ease-in-out"

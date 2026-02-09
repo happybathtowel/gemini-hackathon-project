@@ -51,6 +51,7 @@ export async function analyzeBatch(ticker, filings) {
     return response.json();
 }
 
+
 export async function getStockHistory(ticker, period = "1mo") {
     const response = await fetch(`${API_BASE}/api/stock-history?ticker=${ticker}&period=${period}`);
     if (!response.ok) throw new Error("Failed to get stock history");
