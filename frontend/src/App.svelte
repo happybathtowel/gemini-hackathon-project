@@ -65,7 +65,7 @@
       const data = await trackTicker(ticker);
       trackedTickers.add(data.ticker);
       trackedTickers = trackedTickers;
-      selectedTicker = data.ticker;
+      handleTickerSelect(data.ticker);
       filingsMap[data.ticker] = data.recent_filings;
 
       // Refresh feed

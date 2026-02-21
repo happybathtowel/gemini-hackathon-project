@@ -137,7 +137,7 @@ def analyze_company(request: CompanyAnalysisRequest):
     # 4. Analyze
     from analyzer import analyze_company_comprehensive
     report = analyze_company_comprehensive(ticker, filing_data_list)
-    
+    return {"report": report}
 
 
 

@@ -112,7 +112,7 @@ def analyze_company_comprehensive(ticker: str, filings_list: list) -> str:
     cache_path = get_cache_path(cache_key)
 
     if os.path.exists(cache_path):
-        logger.info(f"Comprehensive analysis cache hit for {ticker}")
+        logger.info(f"Comprehensive analysis cache hit for {ticker} ({cache_key})")
         try:
             with open(cache_path, "r", encoding="utf-8") as f:
                 return f.read()
