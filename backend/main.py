@@ -174,25 +174,35 @@ def analyze_filings_batch_endpoint(request: BatchAnalysisRequest):
     if not filings_list:
          raise HTTPException(status_code=400, detail="Could not retrieve text for any filings")
          
-    from analyzer import analyze_filings_batch
     import json
-    
+    import re
+    from analyzer import analyze_filings_batch
+
     report = analyze_filings_batch(ticker, filings_list)
     
     # analyzer.py now returns a JSON string. 
     # We should try to parse it to return a proper JSON object to frontend.
     try:
-        # It comes back as a markdown code block sometimes ```json ... ```
-        clean_report = report.replace("```json", "").replace("```", "").strip()
-        analysis_data = json.loads(clean_report)
-        return {"analysis": analysis_data}
+        # Robust JSON extraction
+        # Find the first { and last }
+        start_index = report.find('{')
+        end_index = report.rfind('}')
+        
+        if start_index != -1 and end_index != -1:
+            json_str = report[start_index:end_index+1]
+            analysis_data = json.loads(json_str)
+            return {"analysis": analysis_data}
+        else:
+            raise ValueError("No JSON object found in response")
+
     except Exception as e:
         logger.warning(f"Failed to parse JSON from batch analysis: {e}")
         # Fallback for old text format or errors
         return {"analysis": {
             "confidence_score": 50,
             "sentiment": "Neutral",
-            "summary": report
+            "summary": "Failed to parse analysis results.",
+            "reasoning": [str(e)]
         }}
 
 

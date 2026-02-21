@@ -277,7 +277,7 @@
       }
     } catch (e) {
       console.error("Confidence analysis failed", e);
-      confidenceSummary = "Failed to calculate confidence.";
+      confidenceSummary = "Failed: " + e.message;
     }
   }
 
@@ -289,6 +289,11 @@
         new Date(b.filingDate).getTime() - new Date(a.filingDate).getTime()
       );
     });
+
+  // Filter filings for Reports tab if a ticker is selected
+  $: reportsFilings = selectedTicker
+    ? allFilings.filter((f) => f.ticker === selectedTicker)
+    : allFilings;
 </script>
 
 <div class="min-h-screen flex flex-col font-sans bg-slate-950 p-8">
@@ -515,7 +520,7 @@
               </p>
             </div>
             <ReportsList
-              {allFilings}
+              allFilings={reportsFilings}
               onAnalyze={handleAnalyze}
               on:analyzeBatch={handleAnalyzeBatch}
             />
