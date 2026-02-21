@@ -16,10 +16,10 @@ if not os.path.exists(CACHE_DIR):
     os.makedirs(CACHE_DIR)
 
 # Initialize client
-api_key = os.getenv("GOOGLE_API_KEY")
+api_key = os.getenv("GEMINI_API_KEY")
 client = None
 if not api_key:
-    logger.warning("GOOGLE_API_KEY not found in environment variables. Analysis will fail.")
+    logger.warning("GEMINI_API_KEY not found in environment variables. Analysis will fail.")
 else:
     try:
         client = genai.Client(api_key=api_key)
@@ -36,7 +36,7 @@ def analyze_filing(ticker: str, form_type: str, text_content: str) -> str:
     Returns a markdown summary/analysis.
     """
     if not client:
-        return "Error: GOOGLE_API_KEY not configured. Please check backend/.env"
+        return "Error: GEMINI_API_KEY not configured. Please check backend/.env"
 
     if not text_content:
         return "Error: No content to analyze."
@@ -100,7 +100,7 @@ def analyze_company_comprehensive(ticker: str, filings_list: list) -> str:
     filings_list: list of dicts { 'form': str, 'filingDate': str, 'content': str, 'accessionNumber': str }
     """
     if not client:
-        return "Error: GOOGLE_API_KEY not configured."
+        return "Error: GEMINI_API_KEY not configured."
 
     if not filings_list:
         return "No filings provided for analysis."
@@ -192,7 +192,7 @@ def analyze_filings_batch(ticker: str, filings_list: list) -> str:
     filings_list: list of dicts { 'form': str, 'filingDate': str, 'content': str, 'accessionNumber': str }
     """
     if not client:
-        return "Error: GOOGLE_API_KEY not configured."
+        return "Error: GEMINI_API_KEY not configured."
 
     if not filings_list:
         return "No filings provided for analysis."
