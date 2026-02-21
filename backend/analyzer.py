@@ -77,7 +77,7 @@ def analyze_filing(ticker: str, form_type: str, text_content: str) -> str:
     
     try:
         response = client.models.generate_content(
-            model='gemini-3-flash-preview',
+            model='gemini-3.1-flash-preview',
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.2
@@ -169,7 +169,7 @@ def analyze_company_comprehensive(ticker: str, filings_list: list) -> str:
     
     try:
         response = client.models.generate_content(
-            model='gemini-3-flash-preview', 
+            model='gemini-3.1-flash-preview', 
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.3
@@ -257,7 +257,7 @@ def analyze_filings_batch(ticker: str, filings_list: list) -> str:
     
     try:
         response = client.models.generate_content(
-            model='gemini-3-flash-preview', 
+            model='gemini-3.1-flash-preview', 
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.1,
